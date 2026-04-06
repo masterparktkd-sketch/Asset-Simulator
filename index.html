@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>💰 자산 시뮬레이터</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f8fafc;color:#111827}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+@media(min-width:768px){
+  #app{display:flex;height:100vh;overflow:hidden}
+  #left{width:275px;min-width:275px;flex-shrink:0;height:100%;overflow-y:auto;border-right:1px solid #e5e7eb}
+  #right{flex:1;height:100%;overflow-y:auto}
+  #mob-tabs{display:none}
+}
+@media(max-width:767px){
+  #app{display:block}
+  #left{width:100%;border-bottom:1px solid #e5e7eb}
+  #right{width:100%}
+  .cards{grid-template-columns:repeat(2,1fr)!important}
+  .card:last-child{grid-column:span 2}
+  #mob-tabs{display:flex;position:sticky;top:0;z-index:100;background:#fff;border-bottom:2px solid #e5e7eb;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+  #mob-tabs button{flex:1;padding:12px 8px;border:none;background:transparent;font-size:13px;font-weight:600;color:#9ca3af;cursor:pointer;transition:color .2s,border-bottom .2s;border-bottom:3px solid transparent}
+  #mob-tabs button.active{color:#6366f1;border-bottom:3px solid #6366f1}
+  .mob-panel{display:none}
+  .mob-panel.active{display:block}
+}
+#left{background:#fff;padding:14px}
+#right{padding:14px;background:#f8fafc}
+h1{font-size:16px;font-weight:700;color:#6366f1;margin-bottom:2px}
+.sub{font-size:11px;color:#9ca3af;margin-bottom:12px}
+.sec-btn{width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:none;color:#6366f1;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:7px 0;cursor:pointer;border-bottom:1px solid #f3f4f6}
+.sec-btn:hover{color:#4f46e5}
+.sec-body{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px;margin-bottom:6px}
+.field{margin-bottom:8px}
+.field label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:3px}
+.hint{color:#9ca3af;font-weight:400;margin-left:3px}
+.iw{display:flex;align-items:center;background:#fff;border:1px solid #d1d5db;border-radius:8px;overflow:hidden;transition:border-color .2s}
+.iw:focus-within{border-color:#6366f1}
+.iw.readonly{background:#f9fafb}
+.pre{color:#6b7280;font-size:11px;padding-left:10px}
+.iw input{flex:1;background:transparent;border:none;outline:none;color:#111827;font-size:13px;padding:7px 8px}
+.iw input[readonly]{color:#6b7280}
+.iw .unit{color:#6b7280;font-size:11px;padding-right:8px;white-space:nowrap}
+.sl{font-size:11px;font-weight:700;margin:10px 0 5px}
+.divrow{display:flex;justify-content:space-between;font-size:11px;padding:5px 0;border-top:1px solid #e5e7eb;margin-top:4px}
+.infonote{background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px;font-size:11px;color:#0369a1;line-height:1.8;margin-top:6px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:#f3f4f6;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+.toggle-track{width:40px;height:20px;border-radius:10px;position:relative;cursor:pointer;transition:background .2s}
+.toggle-thumb{position:absolute;top:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.autopay-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px;margin-bottom:8px;font-size:11px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.card .cl{font-size:10px;color:#9ca3af;margin-bottom:2px}
+.card .cv{font-size:14px;font-weight:700;line-height:1.2}
+.card .cs{font-size:10px;color:#9ca3af;margin-top:2px}
+.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.panel h2{font-size:13px;font-weight:700;color:#374151;margin-bottom:10px}
+.abar{display:flex;border-radius:6px;overflow:hidden;height:16px;margin-bottom:8px}
+.aleg{display:flex;flex-wrap:wrap;gap:8px}
+.chart-wrap{position:relative;height:260px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;font-size:11px;border-collapse:collapse;min-width:880px}
+th{text-align:left;color:#6b7280;padding:6px 8px;font-weight:600;white-space:nowrap;border-bottom:2px solid #e5e7eb}
+td{padding:5px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap}
+.tr-alt{background:#f9fafb}.tr-rec{background:#fef2f2}
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;margin-right:2px;font-weight:700}
+/* What-if panel */
+.wi-panel{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px;margin-bottom:12px}
+.wi-panel h2{font-size:13px;font-weight:700;color:#92400e;margin-bottom:10px}
+.slider-row{margin-bottom:12px}
+.slider-row .slabel{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+.slider-row input[type=range]{width:100%;height:4px;cursor:pointer;accent-color:#6366f1}
+.slider-row .srange{display:flex;justify-content:space-between;font-size:10px;color:#9ca3af;margin-top:2px}
+.wi-result{display:flex;gap:20px;margin-top:8px;padding:8px 12px;background:#fff;border-radius:8px;font-size:12px;border:1px solid #e5e7eb}
+.cta{width:100%;margin-top:10px;padding:11px;border-radius:12px;font-weight:700;font-size:13px;background:linear-gradient(135deg,#6366f1,#a855f7);border:none;color:#fff;cursor:not-allowed;opacity:.55;box-shadow:0 4px 12px rgba(99,102,241,.2)}
+.cta-note{font-size:10px;color:#9ca3af;text-align:center;margin-top:5px}
+.offline-note{background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:14px;text-align:center;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div id="mob-tabs">
+  <button id="tab-input" class="active" onclick="switchTab('input')">⚙️ 입력</button>
+  <button id="tab-result" onclick="switchTab('result')">📊 결과</button>
+</div>
+<div id="app">
+<div id="left" class="mob-panel active">
+  <h1>💰 자산 시뮬레이터</h1>
+  <p class="sub">재무 정보를 입력하고 미래를 시뮬레이션하세요</p>
+
+  <!-- ASSETS -->
+  <button class="sec-btn" onclick="tog('sa')">📦 자산 구성<span id="bsa" style="color:#059669;font-weight:400;text-transform:none;margin-left:6px;font-size:11px"></span><span id="asa"> ▲</span></button>
+  <div id="sa" class="sec-body">
+    <div class="sl" style="color:#059669;margin-top:0">🏠 공동 자산</div>
+    <div class="field"><label>Cash</label><div class="iw"><span class="pre">$</span><input type="number" id="cash" value="20000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>Savings</label><div class="iw"><span class="pre">$</span><input type="number" id="saving" value="50000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>Brokerage</label><div class="iw"><span class="pre">$</span><input type="number" id="brok" value="50000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>Annuity</label><div class="iw"><span class="pre">$</span><input type="number" id="ann" value="0" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>부동산</label><div class="iw"><span class="pre">$</span><input type="number" id="re" value="200000" step="5000" oninput="calc()"></div></div>
+    <div class="field"><label>HSA</label><div class="iw"><span class="pre">$</span><input type="number" id="hsa" value="15000" step="1000" oninput="calc()"></div></div>
+    <div class="divrow"><span style="color:#6b7280">공동 소계</span><span id="tj" style="color:#059669;font-weight:700"></span></div>
+    <div class="sl" style="color:#6366f1">👤 내 계좌</div>
+    <div class="field"><label>Traditional IRA</label><div class="iw"><span class="pre">$</span><input type="number" id="myT" value="80000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>401(K)</label><div class="iw"><span class="pre">$</span><input type="number" id="my4" value="150000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>Roth IRA</label><div class="iw"><span class="pre">$</span><input type="number" id="myRo" value="60000" step="1000" oninput="calc()"></div></div>
+    <div class="divrow"><span style="color:#6b7280">내 계좌 소계</span><span id="tm" style="color:#6366f1;font-weight:700"></span></div>
+    <div class="sl" style="color:#a855f7">👩 아내 계좌</div>
+    <div class="field"><label>Traditional IRA</label><div class="iw"><span class="pre">$</span><input type="number" id="wT" value="60000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>401(K)</label><div class="iw"><span class="pre">$</span><input type="number" id="w4" value="100000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>Roth IRA</label><div class="iw"><span class="pre">$</span><input type="number" id="wRo" value="40000" step="1000" oninput="calc()"></div></div>
+    <div class="divrow"><span style="color:#6b7280">아내 계좌 소계</span><span id="tw" style="color:#a855f7;font-weight:700"></span></div>
+  </div>
+
+  <!-- DEBTS -->
+  <button class="sec-btn" onclick="tog('sd')">🏦 부채<span id="bsd" style="color:#ef4444;font-weight:400;text-transform:none;margin-left:6px;font-size:11px"></span><span id="asd"> ▲</span></button>
+  <div id="sd" class="sec-body">
+    <p style="font-size:11px;color:#9ca3af;margin-bottom:8px">총자산에서 자동 차감 · 상환액은 매년 지출로 반영</p>
+    <div class="sl" style="color:#ef4444;margin-top:0">🏠 모기지</div>
+    <div class="field"><label>잔액</label><div class="iw"><span class="pre">$</span><input type="number" id="dmort" value="150000" step="5000" oninput="calc()"></div></div>
+    <div class="field"><label>금리</label><div class="iw"><input type="number" id="dmortR" value="6.5" step="0.1" min="0" max="15" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="field"><label>월 페이먼트</label><div class="iw"><span class="pre">$</span><input type="number" id="dmortP" value="1200" step="100" oninput="calc()"></div></div>
+    <div class="field"><label>완납 예정 연도</label><div class="iw"><input type="number" id="dmortE" value="2045" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="sl" style="color:#ef4444">🚗 자동차 할부</div>
+    <div class="field"><label>잔액 (원금)</label><div class="iw"><span class="pre">$</span><input type="number" id="dcar" value="15000" step="1000" oninput="calcCar()"></div></div>
+    <div class="field"><label>금리</label><div class="iw"><input type="number" id="dcarR" value="5.9" step="0.1" min="0" max="20" oninput="calcCar()"><span class="unit">%</span></div></div>
+    <div class="field"><label>상환 기간</label><div class="iw"><input type="number" id="dcarM" value="48" step="6" min="6" max="84" oninput="calcCar()"><span class="unit">개월</span></div></div>
+    <div class="autopay-box">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="color:#6b7280">월 페이먼트 (자동계산)</span><span id="carPmt" style="color:#6366f1;font-weight:700"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="color:#6b7280">총 상환액</span><span id="carTotal" style="color:#6366f1;font-weight:700"></span>
+      </div>
+    </div>
+    <div class="field"><label>완납 예정 연도</label><div class="iw readonly"><input type="number" id="dcarE" value="2028" readonly style="color:#6b7280"></div></div>
+    <div class="sl" style="color:#ef4444">💳 기타 부채</div>
+    <div class="field"><label>잔액</label><div class="iw"><span class="pre">$</span><input type="number" id="doth" value="5000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>완납 예정 연도</label><div class="iw"><input type="number" id="dothE" value="2027" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="divrow"><span style="color:#6b7280">부채 합계</span><span id="tdebt" style="color:#ef4444;font-weight:700"></span></div>
+    <div class="divrow" style="margin-top:2px"><span style="color:#6b7280">순자산</span><span id="tnet" style="color:#059669;font-weight:700"></span></div>
+  </div>
+
+  <!-- FIXED EXPENSES -->
+  <button class="sec-btn" onclick="tog('sf')">🧾 고정 지출<span id="bsf" style="color:#f59e0b;font-weight:400;text-transform:none;margin-left:6px;font-size:11px"></span><span id="asf"> ▲</span></button>
+  <div id="sf" class="sec-body">
+    <p style="font-size:11px;color:#9ca3af;margin-bottom:8px">연 생활비와 합산 → 총 지출. Medicare 시작 시 건강보험 자동 삭감.</p>
+    <div class="field"><label>집 보험</label><div class="iw"><span class="pre">$</span><input type="number" id="fhi" value="2400" step="100" oninput="calc()"></div></div>
+    <div class="field"><label>건강 보험</label><div class="iw"><span class="pre">$</span><input type="number" id="fhe" value="6000" step="100" oninput="calc()"></div></div>
+    <div class="field"><label>자동차 보험</label><div class="iw"><span class="pre">$</span><input type="number" id="fai" value="1800" step="100" oninput="calc()"></div></div>
+    <div class="field"><label>Property Tax</label><div class="iw"><span class="pre">$</span><input type="number" id="fpt" value="4000" step="100" oninput="calc()"></div></div>
+    <div class="field"><label>기타 부대비용<span class="hint">(집수선·자녀)</span></label><div class="iw"><span class="pre">$</span><input type="number" id="fmi" value="3000" step="500" oninput="calc()"></div></div>
+    <div class="divrow"><span style="color:#6b7280">고정지출 소계</span><span id="tfix" style="color:#f59e0b;font-weight:700"></span></div>
+    <div class="divrow" style="margin-top:2px"><span style="color:#6b7280">총 연 지출</span><span id="texp" style="color:#f59e0b;font-weight:700"></span></div>
+  </div>
+
+  <!-- BASIC -->
+  <button class="sec-btn" onclick="tog('sb')">👤 기본 & 수익<span id="asb"> ▲</span></button>
+  <div id="sb" class="sec-body">
+    <div class="field"><label>내 나이</label><div class="iw"><input type="number" id="myAge" value="40" min="20" max="80" oninput="calc()"><span class="unit">세</span></div></div>
+    <div class="field"><label>아내 나이</label><div class="iw"><input type="number" id="wifeAge" value="38" min="20" max="80" oninput="calc()"><span class="unit">세</span></div></div>
+    <div class="field"><label>자산 연 수익률</label><div class="iw"><input type="number" id="aRet" value="7" step="0.1" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="field"><label>인플레이션율<span class="hint">(실질 차트용)</span></label><div class="iw"><input type="number" id="inflR" value="3" step="0.1" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="field"><label>연 수입</label><div class="iw"><span class="pre">$</span><input type="number" id="inc" value="80000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>연 수입 증가율</label><div class="iw"><input type="number" id="incG" value="2" step="0.1" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="field"><label>연 생활비<span class="hint">(고정지출 별도)</span></label><div class="iw"><span class="pre">$</span><input type="number" id="liv" value="48000" step="1000" oninput="calc()"></div></div>
+    <div class="field"><label>연 지출 증가율<span class="hint">(인플레)</span></label><div class="iw"><input type="number" id="expG" value="3" step="0.1" oninput="calc()"><span class="unit">%</span></div></div>
+  </div>
+
+  <!-- RETIRE & SS -->
+  <button class="sec-btn" onclick="tog('sr')">🏖️ 은퇴 & Social Security<span id="asr"> ▲</span></button>
+  <div id="sr" class="sec-body">
+    <div class="field"><label>내 은퇴 연도</label><div class="iw"><input type="number" id="myRet" value="2035" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="field"><label>아내 은퇴 연도</label><div class="iw"><input type="number" id="wifeRet" value="2038" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="field"><label>자산 매각 비용율<span class="hint">(세금+수수료)</span></label><div class="iw"><input type="number" id="sellC" value="10" step="0.1" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="sl" style="color:#6366f1">👤 내 Social Security</div>
+    <div class="field"><label>수령 시작 연도</label><div class="iw"><input type="number" id="mySSy" value="2047" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="field"><label>연 수령액 (본인)</label><div class="iw"><span class="pre">$</span><input type="number" id="mySSa" value="24000" step="500" oninput="calc()"></div></div>
+    <div class="toggle-row">
+      <span style="font-size:11px;color:#374151">Spousal Benefit 적용</span>
+      <div id="spousalToggle" onclick="toggleSpousal()" class="toggle-track" style="background:#6366f1">
+        <div id="spousalThumb" class="toggle-thumb" style="left:22px"></div>
+      </div>
+    </div>
+    <div id="spousalInfo" style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:8px;font-size:11px;color:#6366f1;line-height:1.8;margin-bottom:6px">
+      <span id="spousalDesc"></span>
+    </div>
+    <div class="sl" style="color:#a855f7">👩 아내 Social Security</div>
+    <div class="field"><label>수령 시작 연도</label><div class="iw"><input type="number" id="wifeSSy" value="2050" min="2024" max="2070" oninput="calc()"><span class="unit">년</span></div></div>
+    <div class="field"><label>연 수령액</label><div class="iw"><span class="pre">$</span><input type="number" id="wifeSSa" value="18000" step="500" oninput="calc()"></div></div>
+  </div>
+
+  <!-- MEDICARE -->
+  <button class="sec-btn" onclick="tog('sm')">🏥 Medicare<span id="asm"> ▼</span></button>
+  <div id="sm" class="sec-body" style="display:none">
+    <p style="font-size:11px;color:#9ca3af;margin-bottom:8px">Part B+D+Medigap · 1인 기준 · Medicare 시작 시 건강보험 자동 삭감</p>
+    <div class="field"><label>시작 나이<span class="hint">(일반 65세)</span></label><div class="iw"><input type="number" id="medAge" value="65" min="60" max="70" oninput="calc()"><span class="unit">세</span></div></div>
+    <div class="field"><label>연 비용 (1인)</label><div class="iw"><span class="pre">$</span><input type="number" id="medCost" value="4000" step="500" oninput="calc()"></div></div>
+    <div class="field"><label>비용 증가율</label><div class="iw"><input type="number" id="medG" value="5" step="0.5" oninput="calc()"><span class="unit">%</span></div></div>
+    <div class="infonote">• 나/아내 각각 해당 나이 도달 시 별도 적용<br>• IRMAA: 고소득 시 추가 부담 발생</div>
+  </div>
+
+  <!-- RMD -->
+  <button class="sec-btn" onclick="tog('srmd')">🏦 RMD 설정<span id="asrmd"> ▼</span></button>
+  <div id="srmd" class="sec-body" style="display:none">
+    <div class="field"><label>RMD 시작 나이<span class="hint">(현행 73세)</span></label><div class="iw"><input type="number" id="rmdAge" value="73" min="72" max="75" oninput="calc()"><span class="unit">세</span></div></div>
+    <div class="field"><label>RMD 적용 세율</label><div class="iw"><input type="number" id="rmdTax" value="22" step="1" min="0" max="50" oninput="calc()"><span class="unit">%</span></div></div>
+  </div>
+
+  <!-- RECESSION -->
+  <button class="sec-btn" onclick="tog('srec')">⚡ 불황 설정<span id="asrec"> ▼</span></button>
+  <div id="srec" class="sec-body" style="display:none">
+    <div class="field"><label>불황 주기</label><div class="iw"><input type="number" id="recC" value="10" min="1" max="30" oninput="calc()"><span class="unit">년마다</span></div></div>
+    <div class="field"><label>불황 시 자산 하락율</label><div class="iw"><input type="number" id="recD" value="30" step="1" min="0" max="80" oninput="calc()"><span class="unit">%</span></div></div>
+  </div>
+
+  <button class="cta" disabled>🎯 AI 컨설팅 (온라인 전용)</button>
+  <p class="cta-note">AI 컨설팅은 claude.ai에서만 이용 가능합니다</p>
+  <button onclick="saveHTML()" style="width:100%;margin-top:8px;padding:10px;border-radius:12px;font-weight:700;font-size:13px;background:#f0fdf4;border:1px solid #86efac;color:#166534;cursor:pointer">
+    💾 HTML 파일로 저장 (오프라인용)
+  </button>
+  <button onclick="switchTab('result')" style="width:100%;margin-top:8px;padding:12px;border-radius:12px;font-weight:700;font-size:14px;background:linear-gradient(135deg,#6366f1,#a855f7);border:none;color:#fff;cursor:pointer;display:none" id="view-result-btn">
+    📊 결과 보기 →
+  </button>
+</div>
+
+<!-- RIGHT -->
+<div id="right" class="mob-panel">
+  <div class="cards">
+    <div class="card"><div class="cl">현재 연도</div><div class="cv" id="cyr" style="color:#6366f1"></div><div class="cs" id="cages"></div></div>
+    <div class="card"><div class="cl">내 은퇴</div><div class="cv" id="cmr" style="color:#a855f7"></div><div class="cs" id="cma"></div></div>
+    <div class="card"><div class="cl">아내 은퇴</div><div class="cv" id="cwr" style="color:#ec4899"></div><div class="cs" id="cwa"></div></div>
+    <div class="card"><div class="cl">현재 순자산</div><div class="cv" id="cnet" style="color:#059669"></div><div class="cs" id="cgross"></div></div>
+    <div class="card"><div class="cl">자산 소진</div><div class="cv" id="cruin"></div><div class="cs" id="cruinage"></div></div>
+  </div>
+
+  <!-- Asset Bar -->
+  <div class="panel">
+    <h2>🏦 현재 자산 구성</h2>
+    <div class="abar" id="abar"></div>
+    <div class="aleg" id="aleg"></div>
+  </div>
+
+  <!-- What-if Sliders -->
+  <div class="wi-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin-bottom:0">🎛️ What-if 시뮬레이션</h2>
+      <button onclick="clearWI()" style="font-size:11px;color:#6b7280;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:3px 8px;cursor:pointer">초기화</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 24px">
+      <div class="slider-row">
+        <div class="slabel"><span style="color:#374151;font-weight:600">투자 수익률</span><span id="wi-ret-val" style="color:#6366f1;font-weight:700"></span></div>
+        <input type="range" id="wi-ret" min="0" max="20" step="0.5" oninput="updateWI()">
+        <div class="srange"><span>0%</span><span>20%</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slabel"><span style="color:#374151;font-weight:600">인플레이션</span><span id="wi-infl-val" style="color:#f59e0b;font-weight:700"></span></div>
+        <input type="range" id="wi-infl" min="0" max="10" step="0.5" style="accent-color:#f59e0b" oninput="updateWI()">
+        <div class="srange"><span>0%</span><span>10%</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slabel"><span style="color:#374151;font-weight:600">연 소비</span><span id="wi-exp-val" style="color:#ef4444;font-weight:700"></span></div>
+        <input type="range" id="wi-exp" min="10000" max="200000" step="1000" style="accent-color:#ef4444" oninput="updateWI()">
+        <div class="srange"><span>$10K</span><span>$200K</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slabel"><span style="color:#374151;font-weight:600">내 은퇴 연도</span><span id="wi-myret-val" style="color:#059669;font-weight:700"></span></div>
+        <input type="range" id="wi-myret" min="2025" max="2055" step="1" style="accent-color:#059669" oninput="updateWI()">
+        <div class="srange"><span>2025</span><span>2055</span></div>
+      </div>
+      <div class="slider-row">
+        <div class="slabel"><span style="color:#374151;font-weight:600">아내 은퇴 연도</span><span id="wi-wiferet-val" style="color:#a855f7;font-weight:700"></span></div>
+        <input type="range" id="wi-wiferet" min="2025" max="2055" step="1" style="accent-color:#a855f7" oninput="updateWI()">
+        <div class="srange"><span>2025</span><span>2055</span></div>
+      </div>
+    </div>
+    <div class="wi-result" id="wi-result" style="display:none"></div>
+  </div>
+
+  <!-- Chart -->
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin-bottom:0">📊 자산 변화 추이 (50년)</h2>
+      <div style="display:flex;background:#f3f4f6;border-radius:8px;padding:2px;font-size:11px">
+        <button id="btn-nom" onclick="setChartView('nominal')" style="padding:4px 10px;border-radius:6px;border:none;background:#fff;color:#111827;font-weight:700;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.1)">Nominal</button>
+        <button id="btn-real" onclick="setChartView('real')" style="padding:4px 10px;border-radius:6px;border:none;background:transparent;color:#6b7280;font-weight:400;cursor:pointer">Real</button>
+      </div>
+    </div>
+    <div class="chart-wrap"><canvas id="myChart"></canvas></div>
+  </div>
+
+  <!-- Table -->
+  <div class="panel">
+    <h2>📋 연도별 상세 현황</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>연도</th><th>내 나이</th><th>아내</th><th>총 자산</th>
+          <th>내 Pre-tax</th><th>아내 Pre-tax</th><th>RMD</th>
+          <th>수입</th><th>SS</th><th>Medicare</th><th>부채상환</th><th>총 지출</th><th>순증감</th><th>상태</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="offline-note">
+    <p style="font-size:22px;margin-bottom:6px">🔒</p>
+    <p style="font-size:13px;color:#6366f1;font-weight:600">AI 은퇴 컨설팅은 claude.ai 온라인 버전에서 이용하세요</p>
+    <p style="font-size:11px;color:#9ca3af;margin-top:4px">모든 시뮬레이션 계산은 오프라인에서 정상 작동합니다</p>
+  </div>
+</div>
+</div>
+
+<script>
+// ── Constants & state ──────────────────────────────────────
+const RMD_T={72:27.4,73:26.5,74:25.5,75:24.6,76:23.7,77:22.9,78:22.0,79:21.1,80:20.2,81:19.4,82:18.5,83:17.7,84:16.8,85:16.0,86:15.2,87:14.4,88:13.7,89:12.9,90:12.2,91:11.5,92:10.8,93:10.1,94:9.5,95:8.9,96:8.4,97:7.8,98:7.3,99:6.8,100:6.4};
+const getRMD = a => RMD_T[Math.min(Math.max(a,72),100)]||6.4;
+const CY = new Date().getFullYear();
+const fmt  = v=>{const s=v<0?"-":"",a=Math.abs(v);if(a>=1e9)return s+"$"+(a/1e9).toFixed(1)+"B";if(a>=1e6)return s+"$"+(a/1e6).toFixed(1)+"M";if(a>=1e3)return s+"$"+(a/1e3).toFixed(0)+"K";return s+"$"+a.toFixed(0)};
+const fmtF = v=>{const s=v<0?"-$":"$",a=Math.abs(v);if(a>=1e9)return s+(a/1e9).toFixed(2)+"B";if(a>=1e6)return s+(a/1e6).toFixed(2)+"M";if(a>=1e3)return s+(a/1e3).toFixed(0)+"K";return s+a.toFixed(0)};
+const g = id=>parseFloat(document.getElementById(id).value)||0;
+const sv = (id,v)=>{document.getElementById(id).textContent=v};
+
+let chartInst=null, spousalOn=true, chartView="nominal";
+let baseRows=[], wiRows=[];
+
+// ── Car payment auto-calc ──────────────────────────────────
+function calcMonthlyPmt(p,r,m){if(!r)return p/m;const mr=r/100/12;return p*mr*Math.pow(1+mr,m)/(Math.pow(1+mr,m)-1)}
+function calcCar(){
+  const p=g("dcar"),r=g("dcarR"),m=g("dcarM");
+  const pmt=calcMonthlyPmt(p,r,m);
+  sv("carPmt","$"+pmt.toFixed(0)+"/월");
+  sv("carTotal","$"+(pmt*m).toFixed(0));
+  document.getElementById("dcarE").value=CY+Math.ceil(m/12);
+  calc();
+}
+
+// ── Toggle helpers ─────────────────────────────────────────
+function toggleSpousal(){
+  spousalOn=!spousalOn;
+  document.getElementById("spousalToggle").style.background=spousalOn?"#6366f1":"#d1d5db";
+  document.getElementById("spousalThumb").style.left=spousalOn?"22px":"2px";
+  document.getElementById("spousalInfo").style.display=spousalOn?"block":"none";
+  calc();
+}
+function tog(id){
+  const el=document.getElementById(id),arr=document.getElementById("a"+id);
+  if(!el||!arr)return;
+  const open=el.style.display!=="none";
+  el.style.display=open?"none":"block";
+  arr.textContent=arr.textContent.replace(open?"▲":"▼",open?"▼":"▲");
+}
+function setChartView(v){
+  chartView=v;
+  document.getElementById("btn-nom").style.background=v==="nominal"?"#fff":"transparent";
+  document.getElementById("btn-nom").style.fontWeight=v==="nominal"?"700":"400";
+  document.getElementById("btn-nom").style.color=v==="nominal"?"#111827":"#6b7280";
+  document.getElementById("btn-real").style.background=v==="real"?"#fff":"transparent";
+  document.getElementById("btn-real").style.fontWeight=v==="real"?"700":"400";
+  document.getElementById("btn-real").style.color=v==="real"?"#111827":"#6b7280";
+  renderChart();
+}
+
+// ── What-if sliders ────────────────────────────────────────
+function initSliders(){
+  document.getElementById("wi-ret").value=g("aRet");
+  document.getElementById("wi-infl").value=g("inflR");
+  document.getElementById("wi-exp").value=g("liv");
+  document.getElementById("wi-myret").value=g("myRet");
+  document.getElementById("wi-wiferet").value=g("wifeRet");
+  updateWILabels();
+}
+function updateWILabels(){
+  sv("wi-ret-val",parseFloat(document.getElementById("wi-ret").value).toFixed(1)+"%");
+  sv("wi-infl-val",parseFloat(document.getElementById("wi-infl").value).toFixed(1)+"%");
+  const exp=parseFloat(document.getElementById("wi-exp").value);
+  sv("wi-exp-val","$"+(exp/1000).toFixed(0)+"K");
+  sv("wi-myret-val",document.getElementById("wi-myret").value+"년");
+  sv("wi-wiferet-val",document.getElementById("wi-wiferet").value+"년");
+}
+function updateWI(){updateWILabels();calcWI();renderChart();}
+function clearWI(){
+  initSliders();
+  document.getElementById("wi-result").style.display="none";
+  wiRows=[];
+  renderChart();
+}
+function calcWI(){
+  const ov={
+    assetReturn:parseFloat(document.getElementById("wi-ret").value),
+    inflationRate:parseFloat(document.getElementById("wi-infl").value),
+    annualExpense:parseFloat(document.getElementById("wi-exp").value),
+    myRetireYear:parseInt(document.getElementById("wi-myret").value),
+    wifeRetireYear:parseInt(document.getElementById("wi-wiferet").value),
+  };
+  wiRows=runSim(ov);
+  const base=baseRows.find(r=>r.tot<=0);
+  const wi=wiRows.find(r=>r.tot<=0);
+  const el=document.getElementById("wi-result");
+  el.style.display="flex";
+  el.innerHTML=`<span>기준: <strong style="color:#6366f1">${base?base.year+"년 소진":"50년+ 유지"}</strong></span>`
+    +`<span>→ What-if: <strong style="color:${wi?"#ef4444":"#059669"}">${wi?wi.year+"년 소진":"50년+ 유지"}</strong></span>`;
+}
+
+// ── Core simulation ────────────────────────────────────────
+function runSim(overrides={}){
+  const myAge0   = overrides.myAge    ?? g("myAge");
+  const wifeAge0 = overrides.wifeAge  ?? g("wifeAge");
+  const aRet     = overrides.assetReturn  ?? g("aRet");
+  const inflR    = overrides.inflationRate?? g("inflR");
+  const myRetY   = overrides.myRetireYear ?? g("myRet");
+  const wifeRetY = overrides.wifeRetireYear ?? g("wifeRet");
+  const livExp   = overrides.annualExpense ?? g("liv");
+  const expG=g("expG"),incG=g("incG"),recC=g("recC"),recD=g("recD");
+  const mySSy=g("mySSy"),mySSa=g("mySSa"),wifeSSy=g("wifeSSy"),wifeSSa=g("wifeSSa");
+  const medAge=g("medAge"),medCostPer=g("medCost"),medGr=g("medG");
+  const rmdAge=g("rmdAge"),rmdTax=g("rmdTax");
+  const fhi=g("fhi"),fhe=g("fhe"),fai=g("fai"),fpt=g("fpt"),fmi=g("fmi");
+
+  const mortgageInit=g("dmort"),mortgageRate=g("dmortR"),mortgagePmt=g("dmortP"),mortgageEnd=g("dmortE");
+  const carInit=g("dcar"),carRate=g("dcarR"),carMonths=g("dcarM"),carEnd=parseInt(document.getElementById("dcarE").value)||CY+4;
+  const othInit=g("doth"),othEnd=g("dothE");
+
+  const totJ=g("cash")+g("saving")+g("brok")+g("ann")+g("re")+g("hsa");
+  const myPT0=g("myT")+g("my4"),wifePT0=g("wT")+g("w4");
+  const totG=totJ+myPT0+g("myRo")+wifePT0+g("wRo");
+  const totD=mortgageInit+carInit+othInit;
+  const totN=totG-totD;
+  const totFix=fhi+fhe+fai+fpt+fmi;
+  const totExp=livExp+totFix;
+
+  let myPT=myPT0,wifePT=wifePT0,other=totN-myPT-wifePT;
+  let mortBal=mortgageInit,carBal=carInit,othBal=othInit;
+  let exp=totExp,inc=g("inc"),myMedC=medCostPer,wifeMedC=medCostPer;
+  const carPmt=calcMonthlyPmt(carInit,carRate,carMonths);
+  const rows=[];
+
+  for(let yr=0;yr<=50;yr++){
+    const year=CY+yr,mA=myAge0+yr,wA=wifeAge0+yr;
+    const bothRet=year>=myRetY&&year>=wifeRetY;
+    const isRec=recC>0&&yr>0&&yr%recC===0;
+
+    // Debt repayment
+    let mortPay=0;
+    if(mortBal>0&&year<=mortgageEnd){
+      const annInt=mortBal*mortgageRate/100,annPmt=mortgagePmt*12;
+      const princ=Math.min(Math.max(annPmt-annInt,0),mortBal);
+      mortBal=Math.max(mortBal-princ,0);
+      mortPay=mortBal<=0?annInt+princ:annPmt;
+    }
+    let carPay=0;
+    if(carBal>0&&year<=carEnd){
+      const annInt=carBal*carRate/100,annPmt=carPmt*12;
+      const princ=Math.min(Math.max(annPmt-annInt,0),carBal);
+      carBal=Math.max(carBal-princ,0);
+      carPay=carBal<=0?annInt+princ:annPmt;
+    }
+    let othPay=0;
+    if(othBal>0&&year<=othEnd){
+      const yL=Math.max(othEnd-year+1,1);
+      othPay=Math.min(othBal/yL,othBal);
+      othBal=Math.max(othBal-othPay,0);
+    }
+    const debtPay=mortPay+carPay+othPay;
+    other-=debtPay;
+
+    // Growth + recession
+    myPT*=(1+aRet/100);wifePT*=(1+aRet/100);other*=(1+aRet/100);
+    if(isRec){const d=1-recD/100;myPT*=d;wifePT*=d;other*=d;}
+
+    // RMD
+    let mRMD=0,wRMD=0;
+    if(mA>=rmdAge&&myPT>0){mRMD=myPT/getRMD(mA);myPT-=mRMD;other+=mRMD*(1-rmdTax/100);}
+    if(wA>=rmdAge&&wifePT>0){wRMD=wifePT/getRMD(wA);wifePT-=wRMD;other+=wRMD*(1-rmdTax/100);}
+
+    // SS
+    const wifeSS=year>=wifeSSy?wifeSSa:0;
+    const mySSOwn=year>=mySSy?mySSa:0;
+    const mySS=spousalOn&&wifeSS>0&&year>=mySSy?Math.max(mySSOwn,wifeSSa*.5):mySSOwn;
+    const ss=mySS+wifeSS;
+
+    // Medicare + health insurance auto-adjust
+    const myMedOn=mA>=medAge,wifeMedOn=wA>=medAge;
+    const med=(myMedOn?myMedC:0)+(wifeMedOn?wifeMedC:0);
+    const bothMedOn=myMedOn&&wifeMedOn;
+    const eitherMedOn=myMedOn||wifeMedOn;
+    const healthAdj=bothMedOn?0:eitherMedOn?fhe*0.5:fhe;
+    const adjExp=exp-fhe+healthAdj;
+
+    const effInc=bothRet?0:inc;
+    const totalExp=adjExp+med;
+    const netFlow=effInc+ss-totalExp;
+    other+=netFlow;
+    const tot=myPT+wifePT+other;
+    const realAsset=Math.round(tot/Math.pow(1+inflR/100,yr));
+
+    rows.push({year,mA,wA,tot:Math.round(tot),realAsset,
+      myPT:Math.round(myPT),wifePT:Math.round(wifePT),
+      rmd:Math.round(mRMD+wRMD),inc:Math.round(effInc),ss:Math.round(ss),
+      med:Math.round(med),debtPay:Math.round(debtPay),
+      exp:Math.round(totalExp+debtPay),net:Math.round(netFlow),
+      isRec,myR:year>=myRetY,wifeR:year>=wifeRetY});
+
+    exp*=(1+expG/100);
+    if(!bothRet)inc*=(1+incG/100);
+    if(myMedOn)myMedC*=(1+medGr/100);
+    if(wifeMedOn)wifeMedC*=(1+medGr/100);
+  }
+  return rows;
+}
+
+// ── Render chart ───────────────────────────────────────────
+function renderChart(){
+  if(chartInst)chartInst.destroy();
+  const ctx=document.getElementById("myChart").getContext("2d");
+  const grad=ctx.createLinearGradient(0,0,0,260);
+  grad.addColorStop(0,"rgba(99,102,241,0.15)");grad.addColorStop(1,"rgba(99,102,241,0)");
+  const gradWI=ctx.createLinearGradient(0,0,0,260);
+  gradWI.addColorStop(0,"rgba(245,158,11,0.15)");gradWI.addColorStop(1,"rgba(245,158,11,0)");
+
+  const labels=baseRows.map(r=>r.year);
+  const dA=baseRows.map(r=>chartView==="nominal"?r.tot:r.realAsset);
+  const dWI=wiRows.length?wiRows.map(r=>chartView==="nominal"?r.tot:r.realAsset):null;
+  const dSS=baseRows.map(r=>r.ss),dRMD=baseRows.map(r=>r.rmd),dMed=baseRows.map(r=>r.med);
+
+  const myRetY=g("myRet"),wifeRetY=g("wifeRet"),mySSy=g("mySSy"),wifeSSy=g("wifeSSy");
+  const rmdYear=CY+(g("rmdAge")-g("myAge"));
+  const refLines=[
+    {yr:myRetY,color:"#6366f1",label:"내 은퇴"},
+    {yr:wifeRetY,color:"#a855f7",label:"아내 은퇴"},
+    {yr:mySSy,color:"#059669",label:"내 SS"},
+    {yr:wifeSSy,color:"#10b981",label:"아내 SS"},
+    {yr:rmdYear,color:"#f59e0b",label:"RMD"},
+  ];
+
+  const refPlugin={id:"ref",afterDatasetsDraw(chart){
+    const{ctx:c,scales:{x,y}}=chart;
+    refLines.forEach(({yr,color,label})=>{
+      if(yr<labels[0]||yr>labels[labels.length-1])return;
+      const px=x.getPixelForValue(yr);
+      c.save();c.strokeStyle=color;c.lineWidth=1.5;c.setLineDash([5,4]);
+      c.beginPath();c.moveTo(px,y.top+16);c.lineTo(px,y.bottom);c.stroke();
+      c.setLineDash([]);c.fillStyle=color;c.font="bold 9px Segoe UI,sans-serif";
+      c.textAlign="center";c.textBaseline="top";c.fillText(label,px,y.top+2);c.restore();
+    });
+  }};
+
+  const datasets=[
+    {label:"총 자산",data:dA,borderColor:"#6366f1",backgroundColor:grad,fill:true,borderWidth:2.5,pointRadius:0,tension:.3},
+    {label:"Social Security",data:dSS,borderColor:"#059669",fill:false,borderWidth:1.5,pointRadius:0,borderDash:[3,3],tension:.3},
+    {label:"연 RMD",data:dRMD,borderColor:"#f59e0b",fill:false,borderWidth:1.5,pointRadius:0,borderDash:[3,3],tension:.3},
+    {label:"Medicare",data:dMed,borderColor:"#ef4444",fill:false,borderWidth:1.5,pointRadius:0,borderDash:[3,3],tension:.3},
+  ];
+  if(dWI)datasets.splice(1,0,{label:"What-if 자산",data:dWI,borderColor:"#f59e0b",backgroundColor:gradWI,fill:true,borderWidth:2,pointRadius:0,tension:.3,borderDash:[5,3]});
+
+  chartInst=new Chart(ctx,{
+    type:"line",plugins:[refPlugin],data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,layout:{padding:{top:20}},
+      interaction:{mode:"index",intersect:false},
+      plugins:{
+        legend:{labels:{color:"#374151",font:{size:11},boxWidth:18}},
+        tooltip:{backgroundColor:"#fff",borderColor:"#e5e7eb",borderWidth:1,titleColor:"#111827",bodyColor:"#374151",
+          callbacks:{label:c=>`${c.dataset.label}: ${fmtF(c.raw)}`}},
+      },
+      scales:{
+        x:{ticks:{color:"#9ca3af",font:{size:10},maxTicksLimit:10},grid:{color:"#f3f4f6"}},
+        y:{ticks:{color:"#9ca3af",font:{size:10},callback:v=>fmt(v)},grid:{color:"#f3f4f6"}},
+      }
+    }
+  });
+}
+
+// ── Main calc ──────────────────────────────────────────────
+function calc(){
+  const totJ=g("cash")+g("saving")+g("brok")+g("ann")+g("re")+g("hsa");
+  const myPT0=g("myT")+g("my4"),wifePT0=g("wT")+g("w4");
+  const totM=myPT0+g("myRo"),totW=wifePT0+g("wRo");
+  const totG=totJ+totM+totW;
+  const totD=g("dmort")+g("dcar")+g("doth");
+  const totN=totG-totD;
+  const totFix=g("fhi")+g("fhe")+g("fai")+g("fpt")+g("fmi");
+  const totExp=g("liv")+totFix;
+
+  sv("tj",fmtF(totJ));sv("tm",fmtF(totM));sv("tw",fmtF(totW));
+  sv("bsa",fmtF(totG));sv("tdebt","-"+fmtF(totD));sv("tnet",fmtF(totN));
+  sv("bsd","-"+fmtF(totD));sv("tfix",fmtF(totFix)+"/yr");sv("texp",fmtF(totExp)+"/yr");
+  sv("bsf",fmtF(totFix)+"/yr");
+
+  const mySSa=g("mySSa"),wifeSSa=g("wifeSSa");
+  sv("spousalDesc","• 아내 SS의 50% = "+fmtF(wifeSSa*.5)+"/yr<br>• 내 SS ("+fmtF(mySSa)+") 보다 "+(wifeSSa*.5>mySSa?"높으므로 자동 적용":"낮으므로 본인 금액 적용"));
+
+  baseRows=runSim();
+  const ruinRow=baseRows.find(r=>r.tot<=0);
+  const myAge0=g("myAge"),wifeAge0=g("wifeAge"),myRetY=g("myRet"),wifeRetY=g("wifeRet");
+
+  sv("cyr",CY+"년");sv("cages","나 "+myAge0+"세 / 아내 "+wifeAge0+"세");
+  sv("cmr",myRetY+"년");sv("cma","만 "+(myAge0+myRetY-CY)+"세");
+  sv("cwr",wifeRetY+"년");sv("cwa","만 "+(wifeAge0+wifeRetY-CY)+"세");
+  sv("cnet",fmtF(totN));sv("cgross","총 "+fmtF(totG)+" - 부채 "+fmtF(totD));
+  const re1=document.getElementById("cruin"),re2=document.getElementById("cruinage");
+  if(ruinRow){re1.textContent=ruinRow.year+"년";re1.style.color="#ef4444";re2.textContent="만 "+ruinRow.mA+"세";}
+  else{re1.textContent="소진 없음";re1.style.color="#059669";re2.textContent="50년+ 유지";}
+
+  const segs=[{l:"공동",v:totJ,c:"#10b981"},{l:"내 Pre-tax",v:myPT0,c:"#6366f1"},{l:"내 Roth",v:g("myRo"),c:"#60a5fa"},{l:"아내 Pre-tax",v:wifePT0,c:"#a855f7"},{l:"아내 Roth",v:g("wRo"),c:"#f472b6"}].filter(x=>x.v>0);
+  document.getElementById("abar").innerHTML=segs.map(x=>`<div style="width:${(x.v/totG*100).toFixed(1)}%;background:${x.c}" title="${x.l}: ${fmtF(x.v)}"></div>`).join("");
+  document.getElementById("aleg").innerHTML=segs.map(x=>`<span style="color:${x.c};font-size:11px">● ${x.l}: ${fmtF(x.v)}</span>`).join("")+`<span style="color:#ef4444;font-size:11px"> ● 부채: -${fmtF(totD)}</span>`;
+
+  // Sync sliders to current values (only if not user-modified)
+  initSliders();
+  if(wiRows.length)calcWI();
+  renderChart();
+
+  const sc=v=>v<0?"#ef4444":v<totN*.3?"#f59e0b":"#059669";
+  document.getElementById("tbody").innerHTML=baseRows.filter((_,i)=>i%2===0).slice(0,26).map((r,i)=>`
+    <tr style="border-bottom:1px solid #f3f4f6;background:${r.isRec?"#fef2f2":i%2?"#f9fafb":"#fff"}">
+      <td style="padding:5px 8px;font-weight:700;color:#111827">${r.year}</td>
+      <td style="padding:5px 8px;color:#6b7280">${r.mA}세</td>
+      <td style="padding:5px 8px;color:#6b7280">${r.wA}세</td>
+      <td style="padding:5px 8px;font-weight:700;color:${sc(r.tot)}">${fmtF(r.tot)}</td>
+      <td style="padding:5px 8px;color:#6366f1">${fmtF(r.myPT)}</td>
+      <td style="padding:5px 8px;color:#a855f7">${fmtF(r.wifePT)}</td>
+      <td style="padding:5px 8px;color:#f59e0b">${r.rmd>0?fmtF(r.rmd):"-"}</td>
+      <td style="padding:5px 8px;color:#059669">${r.inc>0?fmtF(r.inc):"-"}</td>
+      <td style="padding:5px 8px;color:#10b981">${r.ss>0?fmtF(r.ss):"-"}</td>
+      <td style="padding:5px 8px;color:#ef4444">${r.med>0?fmtF(r.med):"-"}</td>
+      <td style="padding:5px 8px;color:#f87171">${r.debtPay>0?fmtF(r.debtPay):"-"}</td>
+      <td style="padding:5px 8px;color:#f59e0b">${fmtF(r.exp)}</td>
+      <td style="padding:5px 8px;font-weight:600;color:${r.net>=0?"#059669":"#ef4444"}">${r.net>=0?"+":""}${fmtF(r.net)}</td>
+      <td style="padding:5px 8px;white-space:nowrap">
+        ${r.isRec?'<span class="badge" style="background:#fee2e2;color:#ef4444">불황⚡</span>':""}
+        ${r.myR&&r.wifeR?'<span class="badge" style="background:#f3e8ff;color:#a855f7">둘다은퇴</span>':""}
+        ${r.myR&&!r.wifeR?'<span class="badge" style="background:#eef2ff;color:#6366f1">내은퇴</span>':""}
+        ${!r.myR&&r.wifeR?'<span class="badge" style="background:#fdf2f8;color:#ec4899">아내은퇴</span>':""}
+      </td>
+    </tr>`).join("");
+}
+
+function switchTab(tab){
+  const isMobile=window.innerWidth<768;
+  if(!isMobile)return;
+  document.getElementById("tab-input").classList.toggle("active",tab==="input");
+  document.getElementById("tab-result").classList.toggle("active",tab==="result");
+  document.getElementById("left").classList.toggle("active",tab==="input");
+  document.getElementById("right").classList.toggle("active",tab==="result");
+  if(tab==="result")window.scrollTo(0,0);
+}
+function checkMobile(){
+  const isMobile=window.innerWidth<768;
+  document.getElementById("view-result-btn").style.display=isMobile?"block":"none";
+  if(!isMobile){
+    document.getElementById("left").classList.add("active");
+    document.getElementById("right").classList.add("active");
+  }
+}
+window.addEventListener("resize",checkMobile);
+
+function saveHTML(){
+  const html=document.documentElement.outerHTML;
+  const blob=new Blob([html],{type:"text/html"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="asset-simulator.html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Init ───────────────────────────────────────────────────
+calcCar();
+calc();
+checkMobile();
+</script>
+</body>
+</html>
