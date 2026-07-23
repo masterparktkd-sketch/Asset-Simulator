@@ -242,6 +242,12 @@ td{padding:5px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap}
     <div class="aleg" id="aleg"></div>
   </div>
 
+  <!-- Insights -->
+  <div class="panel">
+    <h2>💡 인사이트</h2>
+    <div id="insights" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
   <!-- What-if Sliders -->
   <div class="wi-panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -511,6 +517,57 @@ function runSim(overrides={}){
   return rows;
 }
 
+// ── Insights ───────────────────────────────────────────────
+function renderInsights(totN, totG, myRetY, wifeRetY, ruinRow){
+  const list=[];
+  const myPT0=g("myT")+g("my4"), wifePT0=g("wT")+g("w4");
+  const preTaxTotal=myPT0+wifePT0;
+  const preTaxRatio=totN>0?preTaxTotal/totN*100:0;
+  const rmdAge=g("rmdAge"), livExp=g("liv");
+  const totFix=g("fhi")+g("fhe")+g("fai")+g("fpt")+g("fmi");
+  const totExp=livExp+totFix;
+
+  if(ruinRow){
+    list.push({icon:"⚠️",text:`현재 계획대로면 ${ruinRow.year}년(내 나이 ${ruinRow.mA}세)에 자산이 소진됩니다. 지출을 줄이거나 은퇴 시점을 늦추는 것을 고려해보세요.`});
+  }else{
+    list.push({icon:"✅",text:`시뮬레이션 50년 동안 자산이 소진되지 않습니다.`});
+  }
+
+  if(preTaxRatio>60){
+    list.push({icon:"🏦",text:`전체 순자산의 ${preTaxRatio.toFixed(0)}%가 Pre-tax 계좌(IRA/401K)입니다. RMD 시작 시(${rmdAge}세) 세금 부담이 커질 수 있어 Roth Conversion을 검토해볼 만합니다.`});
+  }
+
+  const rmdRow=baseRows.find(r=>r.mA>=rmdAge);
+  if(rmdRow){
+    const rmdTotal=baseRows.reduce((a,r)=>a+r.rmd,0);
+    list.push({icon:"💸",text:`RMD가 시작되는 ${rmdRow.year}년(내 나이 ${rmdAge}세)부터 생애 총 ${fmtF(rmdTotal)}의 RMD 인출이 예상됩니다.`});
+  }
+
+  const retireRow=baseRows.find(r=>r.year===myRetY);
+  if(retireRow&&retireRow.tot>0){
+    const wr=totExp/retireRow.tot*100;
+    if(wr>4) list.push({icon:"📉",text:`내 은퇴 시점(${myRetY}년) 예상 인출률이 ${wr.toFixed(1)}%로 안전 인출률(4%)을 초과합니다. 자산 소진 위험이 있습니다.`});
+    else list.push({icon:"📈",text:`내 은퇴 시점(${myRetY}년) 예상 인출률은 ${wr.toFixed(1)}%로 안전 범위(4% 이내) 내에 있습니다.`});
+  }
+
+  const recCount=baseRows.filter(r=>r.isRec).length;
+  const recD=g("recD"), recC=g("recC");
+  if(recCount>0){
+    list.push({icon:"⚡",text:`${recC}년 주기 불황 가정 시, 50년간 총 ${recCount}회의 자산 하락(-${recD}%)이 시뮬레이션에 반영되었습니다.`});
+  }
+
+  const totalDebt=g("dmort")+g("dcar")+g("doth");
+  if(totalDebt>0 && totN>0 && totalDebt/totG>30){
+    list.push({icon:"🏠",text:`총자산 대비 부채 비율이 ${(totalDebt/totG*100).toFixed(0)}%로 높은 편입니다. 조기 상환 시 이자 비용을 줄일 수 있습니다.`});
+  }
+
+  document.getElementById("insights").innerHTML=list.map(ins=>
+    `<div style="display:flex;gap:8px;font-size:12px;color:#374151;line-height:1.6">
+      <span>${ins.icon}</span><span>${ins.text}</span>
+    </div>`
+  ).join("");
+}
+
 // ── Render chart ───────────────────────────────────────────
 function renderChart(){
   if(chartInst)chartInst.destroy();
@@ -595,6 +652,8 @@ function calc(){
   baseRows=runSim();
   const ruinRow=baseRows.find(r=>r.tot<=0);
   const myAge0=g("myAge"),wifeAge0=g("wifeAge"),myRetY=g("myRet"),wifeRetY=g("wifeRet");
+
+  renderInsights(totN, totG, myRetY, wifeRetY, ruinRow);
 
   sv("cyr",CY+"년");sv("cages","나 "+myAge0+"세 / 아내 "+wifeAge0+"세");
   sv("cmr",myRetY+"년");sv("cma","만 "+(myAge0+myRetY-CY)+"세");
